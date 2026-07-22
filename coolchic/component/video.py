@@ -73,6 +73,12 @@ def encode_one_frame(
     frame.set_refs_data(get_ref_data(frame, coding_structure))
     prefix_save = f"{_get_frame_path_prefix(frame.display_order)}"
 
+    # comma challenge metric: give the loss access to the frame identity and
+    # the decoded even pair-partner (needed for the PoseNet pair loss).
+    if "comma" in getattr(training_preset, "dist_weight", {}):
+        from coolchic.training.metrics.comma import set_frame_context
+        set_frame_context(frame, device)
+
     if frame.frame_type == "I" and "motion" in coolchic_enc_param:
         coolchic_enc_param.pop("motion")
 

@@ -18,7 +18,7 @@ from coolchic.io.format.yuv import DictTensorYUV
 from coolchic.training.metrics.mse import dist_to_db, mse_fn
 from coolchic.training.metrics.wasserstein import wasserstein_fn
 
-DISTORTION_METRIC = Literal["mse", "wasserstein"]
+DISTORTION_METRIC = Literal["mse", "wasserstein", "comma"]
 
 
 @dataclass(kw_only=True)
@@ -226,6 +226,9 @@ def loss_function(
             cur_dist = _compute_mse(decoded_image, target_image)
         elif dist_name == "wasserstein":
             cur_dist = _compute_wasserstein(decoded_image, target_image)
+        elif dist_name == "comma":
+            from coolchic.training.metrics.comma import compute_comma_distortion
+            cur_dist = compute_comma_distortion(decoded_image, target_image)
         else:
             raise ValueError(
                 f"Unsupported distortion metrics. Found {dist_name}, available "
@@ -260,6 +263,11 @@ def loss_function(
             k: v.detach().sum().item() / n_pixels for k, v in rate_latent_bit.items()
         }
         total_rate_nn_bpp = total_rate_nn_bit / n_pixels
+
+        # PSNR logging always reads detailed_dist["mse"]; the comma metric
+        # replaces mse in dist_weight, so backfill it for the logs.
+        if "mse" not in all_dists:
+            all_dists["mse"] = _compute_mse(decoded_image, target_image).detach()
 
         # Detach all distortions only when computing logs
         for k, v in all_dists.items():

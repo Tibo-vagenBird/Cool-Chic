@@ -1,0 +1,21 @@
+name: coolchic
+channels:
+  - conda-forge
+dependencies:
+  # conda handles Python, the compiler, and the pure-Python deps
+  - python=3.11
+  - pip                        # conda installs pip INTO the env; no system pip needed
+  - matplotlib
+  - einops
+  - scipy
+  - configargparse
+  - pytest
+  - pytest-order
+  - gxx_linux-64               # g++ for the "Compiling frame encoder!" step (no sudo)
+  # PyPI-only / newest packages go through the env-local pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu124
+      - torch>=2.11.0          # CUDA 12.4 wheels bundle their own CUDA runtime
+      - torchvision
+      - fvcore
+      - constriction==0.4.2
