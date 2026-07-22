@@ -348,6 +348,16 @@ def get_preset_from_args(args: argparse.Namespace) -> Dict[str, Any]:
         # "Perceptually optimised Cool-chic for CLIC 2025", Philippe et al.
         dist_weight = {"mse": 0.2, "wasserstein": 0.8 / 200}
 
+    elif args.tune == "comma":
+        if not args.input.endswith(".yuv"):
+            raise argparse.ArgumentTypeError(
+                "--tune=comma expects a YUV420 input video"
+            )
+        # comma.ai challenge judge losses (SegNet/PoseNet), see
+        # coolchic/training/metrics/comma.py. Internal weighting is handled
+        # by the metric itself (COMMA_* env vars).
+        dist_weight = {"comma": 1.0}
+
     else:
         raise argparse.ArgumentTypeError(f"Unknown --tune. Found {args.tune}")
 
