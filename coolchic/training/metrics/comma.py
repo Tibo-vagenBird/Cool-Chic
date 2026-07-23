@@ -49,10 +49,17 @@ from coolchic.io.format.yuv import DictTensorYUV
 CAMERA_H, CAMERA_W = 874, 1164
 
 _SEG_W = float(os.environ.get("COMMA_SEG_W", "100.0"))
-_POSE_W = float(os.environ.get("COMMA_POSE_W", "1.0"))
+# Pose is measured ~6x above its score share with weight 1.0 (diagnosed:
+# median per-pair pose 0.000 at lambda=40); 0.3 frees capacity for seg.
+_POSE_W = float(os.environ.get("COMMA_POSE_W", "0.3"))
 _EVEN_MSE_W = float(os.environ.get("COMMA_EVEN_MSE_W", "1.0"))
 _ODD_MSE_W = float(os.environ.get("COMMA_ODD_MSE_W", "0.0"))
 _SEG_TAU = float(os.environ.get("COMMA_SEG_TAU", "0.3"))
+# L7 hard-pixel weighting (hnerv_muon stage-5 recipe): pixels with margin
+# below the threshold get (1 + mult) weight, renormalized to mean 1 —
+# concentrates gradient on the boundary pixels where label flips happen.
+_L7_MULT = float(os.environ.get("COMMA_L7_MULT", "4.0"))
+_L7_THRESH = float(os.environ.get("COMMA_L7_THRESH", "1.0"))
 
 
 class _Ctx:
@@ -248,7 +255,14 @@ def compute_comma_distortion(
     masked = seg_logits.clone()
     masked.scatter_(1, tgt.unsqueeze(1), -1e9)
     margin = target_logits - masked.max(dim=1, keepdim=True)[0]
-    seg_l = (_SEG_TAU * F.softplus(-margin / _SEG_TAU)).mean()
+    per_pixel = _SEG_TAU * F.softplus(-margin / _SEG_TAU)
+    if _L7_MULT > 0:
+        with torch.no_grad():
+            w = 1.0 + _L7_MULT * (margin < _L7_THRESH).float()
+            w = w / w.mean()
+        seg_l = (per_pixel * w).mean()
+    else:
+        seg_l = per_pixel.mean()
     dist = dist + _SEG_W * seg_l
 
     # PoseNet: needs the decoded even partner (frozen) + current frame.

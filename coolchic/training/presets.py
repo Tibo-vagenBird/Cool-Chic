@@ -341,8 +341,10 @@ class PresetIntra(Preset):
                     quantizer_noise_type="gaussian",
                     quantizer_type="softround",
                     lmbda=self.lmbda,
-                    # Warm-up is always pure mse
-                    dist_weight={"mse": 1.0},
+                    # Candidate selection should optimize the SAME objective as
+                    # the main training (comma tune picks judge-best candidates;
+                    # identical to the old hardcoded mse for --tune=mse).
+                    dist_weight=self.dist_weight,
                     betas_latent=(0.725, 0.97),
                     betas_model=(0.95, 0.95),
                     precondition_frequency_model=1,
@@ -430,8 +432,9 @@ class PresetInter(Preset):
                         quantizer_noise_type="kumaraswamy",
                         quantizer_type="softround",
                         lmbda=self.lmbda,
-                        # Warm-up is always pure mse
-                        dist_weight={"mse": 1.0},
+                        # Candidate selection follows the preset objective
+                        # (judge loss under --tune=comma; mse otherwise).
+                        dist_weight=self.dist_weight,
                         betas_latent=(0.725, 0.97),
                         betas_model=(0.95, 0.95),
                         precondition_frequency_model=1,
